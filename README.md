@@ -3,4 +3,4 @@ Dynamic Bayesian Network (DBN) inferencing: Dynamic Backwards Forwards Inferenci
 
 This is to accompany the paper:
 
-Wu, P. P.-Y., M. J. Caley, G. A. Kendrick, K. McMahon and K. Mengersen (2017). "Dynamic Bayesian Network inferencing for non-homogeneous complex systems." Journal of the Royal Statistical Society, Series C. Accepted.
+Paul P.-Y. Wu, M. Julian Caley, Gary A. Kendrick, Kathryn McMahon, Kerrie Mengersen, Dynamic Bayesian Network Inferencing for Non-Homogeneous Complex Systems, Journal of the Royal Statistical Society Series C: Applied Statistics, Volume 67, Issue 2, February 2018, Pages 417–434, https://doi.org/10.1111/rssc.12228
