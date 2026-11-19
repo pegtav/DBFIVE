@@ -1003,7 +1003,9 @@ updJcpt = function(nnames,statenames,t,Jb,Jf,Jt,Jcpt,lknodeorder,lkcptaddch,lkcp
     # if(abs(ploss_)<1e-2 && W$seed[t]>0){#Case of 'no change' but previously loss-so continue count
     #   W$seed[t+1] = min(12,W$seed[t]+1)
     # } else 
-    if(ploss_<=-1e-12 && Jcpt[[t+1,nlind]]$s[[2]]!=2) { # Use 1e-12 due to floating point errors
+    lights = Jcpt[[t+1,nlind]]$s # state labels in light CPT; light node is last, after its parents
+    lightdark = !any(lights[[length(lights)]] != 2) # light filtered to BelowSaturation (state 2) only
+    if(ploss_<=-1e-12 && !lightdark) { # Use 1e-12 due to floating point errors
       # (since ploss adjusted by W$seed); AND don't reset if still dredging at t+1
       # (light is still p=1 i.e. below_sat)
       # cat(Jcpt[[t+1,nlind]]$s[[2]],' aa\n')
