@@ -1003,7 +1003,9 @@ updJcpt = function(nnames,statenames,t,Jb,Jf,Jt,Jcpt,lknodeorder,lkcptaddch,lkcp
     # if(abs(ploss_)<1e-2 && W$seed[t]>0){#Case of 'no change' but previously loss-so continue count
     #   W$seed[t+1] = min(12,W$seed[t]+1)
     # } else 
-    if(ploss_<=-1e-12 && Jcpt[[t+1,nlind]]$s[[2]]!=2) { # Use 1e-12 due to floating point errors
+    lights = Jcpt[[t+1,nlind]]$s # state labels in light CPT; light node is last, after its parents
+    lightdark = !any(lights[[length(lights)]] != 2) # light filtered to BelowSaturation (state 2) only
+    if(ploss_<=-1e-12 && !lightdark) { # Use 1e-12 due to floating point errors
       # (since ploss adjusted by W$seed); AND don't reset if still dredging at t+1
       # (light is still p=1 i.e. below_sat)
       # cat(Jcpt[[t+1,nlind]]$s[[2]],' aa\n')
@@ -1076,12 +1078,16 @@ updJcpt = function(nnames,statenames,t,Jb,Jf,Jt,Jcpt,lknodeorder,lkcptaddch,lkcp
 }
 
 # --------------------------------------------------------------------------------------------------
-#' @title fwdonly
-#' @description Non-homogeneous DBN forwards only inference. Uses oneslicemargs2, oneslicesumprod,
-#' and updJcpt to calculate marginals for X(t) forall t, compute slice partial results for $\pi(t)$,
-#' and update non-homogeneous CPTs respectively. Compatible with naive oneslicemargs as well as 
-#' d-layer based oneslicemargs.
-#' @param tend = index to last t-slice in simulation window 1:tend
+#' @title fwdonlyfrom
+#' @description Non-homogeneous DBN forwards only inference over t-slices tstart:tend. Uses
+#' oneslicemargs2, oneslicesumprod, and updJcpt to calculate marginals for X(t) forall t, compute
+#' slice partial results for $\pi(t)$, and update non-homogeneous CPTs respectively. Compatible with
+#' naive oneslicemargs as well as d-layer based oneslicemargs.
+#' Starting at tstart>1 continues (restarts) a previous run: pass that run's $J, $Jcpt, $W, $Jf and
+#' $Jb. A run ending at T does not compute Jf[[T+1]] or the CPT update for T+1, so to continue it
+#' use tstart=T (not T+1). J, Jcpt and evid_t must have at least tend rows (see initupdateI).
+#' @param tstart = index to first t-slice to compute (1 for a fresh run)
+#' @param tend = index to last t-slice in simulation window tstart:tend
 #' @param Jcpt[[1..tend,target node]] is the original joint populated by $cpt (same struct as J) 
 #' @param J = J[[1..tend,target node]] - Joint structure for inference with $p numeric vector of p,
 #' $n int vec of nodes n in $J$ in order in which $J$ is composed, $t int vec of node t-slices
@@ -1102,20 +1108,22 @@ updJcpt = function(nnames,statenames,t,Jb,Jf,Jt,Jcpt,lknodeorder,lkcptaddch,lkcp
 #' @param W = exogeneous factors list structure, W$Seed[1:tend] = adjusted count of #months of ploss
 #' @param evid_t[[1..tend,node]][vector of len numstates containing node marginals] - used only
 #' to suppress updating CPT updJcpt if evidence is supplied for that node
+#' @param Jf[[1..tend]] $\pi(t)$ partial results for the forwards sweep (Jf[[t]] is used at time t,
+#' and is actually $\Pi(t-1)$): vector('list',tend) for a fresh run, or $Jf of the run to continue
+#' @param Jb[[1..tend]] ditto for the backwards sweep: vector('list',tend), or $Jb of the run to
+#' continue
 #' @return list containing updated $J[[t,node]] of node marginals, $Jcpt[[t,node]] node CPTs,
-#' $Jf[[1..tend]] $\pi(t)$ partial results to be used at time t for forwards sweep, 
+#' $Jf[[1..tend]] $\pi(t)$ partial results to be used at time t for forwards sweep,
 #' $Jb[[1..tend]] ditto for backwards sweep, W$seed[1:tend] exogeneous factors, seed dens losscount.
 #' @export
 #' @examples none
-#' @name fwdonly
+#' @name fwdonlyfrom
 # Note does not work for $\Pi'(t)$, only for $\Pi(t)$
-fwdonly = function(tend,Jcpt,J,Pinodeorder,Picptaddch,Picptaddcht,
-                   lknodeorder,lkcptaddch,lkcptaddcht,nnames,statenames,W,evid_t) {
+fwdonlyfrom = function(tstart,tend,Jcpt,J,Pinodeorder,Picptaddch,Picptaddcht,
+                       lknodeorder,lkcptaddch,lkcptaddcht,nnames,statenames,W,evid_t,Jf,Jb) {
   t1 = Sys.time()
-  Jf = vector('list',length=tend) # Stores Jf to use at time slice t, which is actually $\Pi(t-1)$
-  Jb = vector('list',length=tend)
   indf = NULL
-  for(t in 1:tend) {
+  for(t in tstart:tend) {
     cat('t=',t,'-----------------------------------------------------------------\n')
     indf = which(Jf[[t]]$t != t)
     J = oneslicemargs2(t=t,Jb=NULL,indb=NULL,Jf=Jf[[t]],indf=indf,Jout=J,Jcpt,
@@ -1131,6 +1139,19 @@ fwdonly = function(tend,Jcpt,J,Pinodeorder,Picptaddch,Picptaddcht,
   }
   cat('Took ',Sys.time()-t1,'s\n')
   return(list(J=J,Jcpt=Jcpt,Jf=Jf,Jb=Jb,W=W))
+}
+
+# --------------------------------------------------------------------------------------------------
+#' @title fwdonly
+#' @description Non-homogeneous DBN forwards only inference over t-slices 1:tend; a fresh run of
+#' fwdonlyfrom (tstart=1, empty Jf and Jb). Parameters and return value as for fwdonlyfrom.
+#' @export
+#' @examples none
+#' @name fwdonly
+fwdonly = function(tend,Jcpt,J,Pinodeorder,Picptaddch,Picptaddcht,
+                   lknodeorder,lkcptaddch,lkcptaddcht,nnames,statenames,W,evid_t) {
+  fwdonlyfrom(1,tend,Jcpt,J,Pinodeorder,Picptaddch,Picptaddcht,lknodeorder,lkcptaddch,lkcptaddcht,
+              nnames,statenames,W,evid_t,Jf=vector('list',tend),Jb=vector('list',tend))
 }
 
 
@@ -1397,13 +1418,15 @@ initdbfiveevid = function(evid_t,I,tend,maxdt) {
                    I$childnodetslice,evid_t,I$cpt,tend)
   I$J = J
   I$evid_t = evid_t
-  I$W$seed = 0*I$W$seed # initialise exogeneous factors W$seed to zero
-  I$W$seedploss = 0*I$W$seedploss
-  I$W$seedplossadj = 0*I$W$seedplossadj
-  I$W$phys = 0*I$W$phys # initialise exogeneous factors W$phys to zero
-  I$W$physploss = 0*I$W$physploss
-  I$W$physplossadj = 0*I$W$physplossadj
-  I$W$shootpgain = 0*I$W$shootpgain
+  # Initialise exogeneous factors W to zero, sized to tend (which may differ from the tend I was
+  # built with, so the simulation can be shorter or longer without re-creating I)
+  I$W$seed = vector('numeric',tend) # number of consecutive seed density loss t-slices
+  I$W$seedploss = vector('numeric',tend)
+  I$W$seedplossadj = vector('numeric',tend)
+  I$W$phys = vector('numeric',tend) # number of consecutive phys status loss t-slices
+  I$W$physploss = vector('numeric',tend)
+  I$W$physplossadj = vector('numeric',tend)
+  I$W$shootpgain = vector('numeric',tend)
   return(I)
 }
 
