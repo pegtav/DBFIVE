@@ -1416,13 +1416,15 @@ initdbfiveevid = function(evid_t,I,tend,maxdt) {
                    I$childnodetslice,evid_t,I$cpt,tend)
   I$J = J
   I$evid_t = evid_t
-  I$W$seed = 0*I$W$seed # initialise exogeneous factors W$seed to zero
-  I$W$seedploss = 0*I$W$seedploss
-  I$W$seedplossadj = 0*I$W$seedplossadj
-  I$W$phys = 0*I$W$phys # initialise exogeneous factors W$phys to zero
-  I$W$physploss = 0*I$W$physploss
-  I$W$physplossadj = 0*I$W$physplossadj
-  I$W$shootpgain = 0*I$W$shootpgain
+  # Initialise exogeneous factors W to zero, sized to tend (which may differ from the tend I was
+  # built with, so the simulation can be shorter or longer without re-creating I)
+  I$W$seed = vector('numeric',tend) # number of consecutive seed density loss t-slices
+  I$W$seedploss = vector('numeric',tend)
+  I$W$seedplossadj = vector('numeric',tend)
+  I$W$phys = vector('numeric',tend) # number of consecutive phys status loss t-slices
+  I$W$physploss = vector('numeric',tend)
+  I$W$physplossadj = vector('numeric',tend)
+  I$W$shootpgain = vector('numeric',tend)
   return(I)
 }
 
